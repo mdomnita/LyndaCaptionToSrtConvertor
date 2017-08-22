@@ -45,7 +45,7 @@ namespace LyndaCaptionToSrtConvertor
             }
         }
 
-        public string preparesrt()
+        public string PrepareSrt()
         {
             //read all file in memory
             string content = File.ReadAllText(filePath);
@@ -74,7 +74,7 @@ namespace LyndaCaptionToSrtConvertor
             return output;
         }
 
-        public bool publishSrt(string output)
+        public bool PublishSrt(string output)
         {
             //split full formatted text in subtitle sections at start of timestamp
             string[] phrases = Regex.Split(output, @"(?=\[[0-9])");
@@ -105,7 +105,7 @@ namespace LyndaCaptionToSrtConvertor
                         captions.Add(text);
                     }
 
-                    this.buildSrt(timestamps, captions, this.outFile);
+                    this.BuildSrt(timestamps, captions, this.outFile);
                 }
                 catch (Exception ex)
                 {
@@ -116,7 +116,7 @@ namespace LyndaCaptionToSrtConvertor
             return true;
         }
 
-        private bool buildSrt(ArrayList timestamps, ArrayList captions, string path)
+        private bool BuildSrt(ArrayList timestamps, ArrayList captions, string path)
         {
             try
             {
@@ -150,8 +150,5 @@ namespace LyndaCaptionToSrtConvertor
                 return false;
             }
         }
-
-
-
     }
 }
