@@ -45,36 +45,28 @@ namespace LyndaCaptionToSrtConvertor
             }
         }
 
-        public string preparesrt()
+        public string PrepareSrt()
         {
+            const int METADATA_LINES = 7, CHARS_BEFORE_TIMESTAMP = 13, CHARS_AFTER_TIMESTAMP = 14;
             //read all file in memory
             string content = File.ReadAllText(filePath);
 
-            //crude replacement of characters that are not plain text. File has NUL, SOX, ACK and other non printing ASCII / binary chars
-            //Observed a pattern in file, rows in caption are ordered/marked by 
-            // a structure of characters of the form [ACK]<0-9A-Z>[NUL] remove these first
-            // a structure of characters of the form [ACK]<0-9A-Z>[SOH] remove these first
-            string output = Regex.Replace(content, @"\u0006[\u0020-\u007F][\u0000\u0001\u0002]", "");
+            // Discard the first lines, containing metadata used by Lynda desktop app to link subtitle to video:
+            string output = RemoveFirstLines(content, METADATA_LINES);
 
-            //there are some chars right after the timestamp ] and before [NUL] or [SOH] or [ETB] chars, drop them 
-            output = Regex.Replace(output, @"\][^\]\u0000-\u001F]+[\u0000-\u001F]", "]");
+            // Before every timestamp we have a constant amount of characters (starting by [NUL][SOH] and ending with \n)
+            output = Regex.Replace(output, @"\u0000\u0001[\s\S]{" + CHARS_BEFORE_TIMESTAMP + "}[\r\n]*", "");
+            
+            // After every timestamp we also have a constant amount of characters:
+            output = Regex.Replace(output, @"(?<=\[\d\d:\d\d:\d\d\.\d\d\])[\s\S]{" + CHARS_AFTER_TIMESTAMP + "}", "");
 
-            //delete all non-UTF8 ASCII printable chars by this regexp
+            // Cleanup remaining non-UTF8 ASCII chars:            
             output = Regex.Replace(output, @"[^\u0020-\u007F \u000D\n\r]+", "");
 
-            //now we might be left with a newline or useless white space after the timestamp and before the text, delete that too
-            output = Regex.Replace(output, @"\][ \n\r\t]", "");
-
-            //remove all info at start of file used by Lynda desktop app to link subtitle to video
-            //presume first timestamp starts with '[00:00...' so this is where the actual subtitle text starts
-            if (output.IndexOf("[0") > 0)
-            {
-                output = output.Substring(output.IndexOf("[0"));
-            }
             return output;
         }
 
-        public bool publishSrt(string output)
+        public bool PublishSrt(string output)
         {
             //split full formatted text in subtitle sections at start of timestamp
             string[] phrases = Regex.Split(output, @"(?=\[[0-9])");
@@ -92,20 +84,17 @@ namespace LyndaCaptionToSrtConvertor
                     subline = Regex.Split(phrases[i], @"(?<=\[[0-9:,.]+\])");
                     if (subline.Length == 2)
                     {
-                        //separator for miliseconds is ',' in srt, '.' in .caption switch it
+                        //separator for miliseconds is ',' in srt, '.' in .caption so switch it
                         start = Regex.Replace(subline[0], "\\.", ",");
                         start = start.Substring(1, start.Length - 2);
                         text = subline[1];
-                        //there may be a number or sign before the actual text, drop it.
-                        //ATTENTION, if there is a subtitle phrase starting eth numbers or symbols this line will delete information from it
-                        text = Regex.Replace(text, @"^[\u0020-\u0040]+", "");
-                        //and delete any useless newlines at the end.
+                        // delete any useless newlines at the end.
                         text = Regex.Replace(text, @"[\r\n\t]+$", "");
                         timestamps.Add(start);
                         captions.Add(text);
                     }
 
-                    this.buildSrt(timestamps, captions, this.outFile);
+                    this.BuildSrt(timestamps, captions, this.outFile);
                 }
                 catch (Exception ex)
                 {
@@ -116,7 +105,14 @@ namespace LyndaCaptionToSrtConvertor
             return true;
         }
 
-        private bool buildSrt(ArrayList timestamps, ArrayList captions, string path)
+        private static string RemoveFirstLines(string text, int linesCount)
+        {
+            // Source: https://stackoverflow.com/a/15925157/
+            var lines = Regex.Split(text, "\r\n|\r|\n").Skip(linesCount);
+            return string.Join(Environment.NewLine, lines.ToArray());
+        }
+
+        private bool BuildSrt(ArrayList timestamps, ArrayList captions, string path)
         {
             try
             {
@@ -150,8 +146,5 @@ namespace LyndaCaptionToSrtConvertor
                 return false;
             }
         }
-
-
-
     }
 }
