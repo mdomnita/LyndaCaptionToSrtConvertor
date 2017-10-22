@@ -57,9 +57,8 @@ namespace LyndaCaptionToSrtConvertor
                 CaptionToSrt aCaption = new CaptionToSrt(filePath);
                 //got list of timestamps here and list of texts, start building the .srt file
                 aCaption.OutFile = filename;
-
-                string srtContent = aCaption.PrepareSrt();
-                aCaption.PublishSrt(srtContent);
+                
+                aCaption.convertToSrt();
 
                 Console.WriteLine("Done " + filename);
 
